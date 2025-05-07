@@ -1,5 +1,6 @@
 "use strict";
 
+import JSON5 from "./utils/json5.min.js";
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import {
@@ -17,6 +18,7 @@ const Settings = {
 }
 
 function getSkippedNodes(workflow) {
+  const skippedNodeSet = new WeakSet();
   const skippedNodes = [];
   const executedIds = [];
 
@@ -51,7 +53,10 @@ function getSkippedNodes(workflow) {
         const outputNodes = workflow.nodes.filter((n) => outputNodeIds.indexOf(n.id) > -1);
 
         for (const outputNode of outputNodes) {
-          skippedNodes.push(outputNode);
+          if (!skippedNodeSet.has(outputNode)) {
+            skippedNodeSet.add(outputNode);
+            skippedNodes.push(outputNode);
+          }
         }
 
       }
@@ -87,10 +92,10 @@ async function handleFile(file ) {
   if (file.type === 'image/png') {
     const pngInfo = await getPngMetadata(file);
     if (pngInfo?.workflow) {
-      workflow = JSON.parse(pngInfo.workflow);
+      workflow = JSON5.parse(pngInfo.workflow);
     }
     if (pngInfo?.prompt) {
-      prompt = JSON.parse(pngInfo.prompt);
+      prompt = JSON5.parse(pngInfo.prompt);
     }
   } else if (file.type === 'image/webp') {
     const pngInfo = await getWebpMetadata(file);
@@ -127,7 +132,7 @@ async function handleFile(file ) {
     const reader = new FileReader()
     reader.onload = async () => {
       const readerResult = reader.result;
-      const jsonContent = JSON.parse(readerResult)
+      const jsonContent = JSON5.parse(readerResult)
 
       workflow = jsonContent?.workflow || jsonContent?.Workflow
       prompt = jsonContent?.prompt || jsonContent?.Prompt
@@ -328,18 +333,11 @@ app.registerExtension({
        const filterFiles = (files) => Array.from(files).filter((e) => 
          e.type.startsWith("image/") && e.type !== "image/bmp");
  
-       const hasValidFiles = (files) => filterFiles(files).length > 0;
-     
        const isDraggingFiles = (e) => {
          if (!e?.dataTransfer?.items) return false;
          return hasFiles(e.dataTransfer.items);
        }
      
-       const isDraggingValidFiles = (e) => {
-         if (!e?.dataTransfer?.files) return false;
-         return hasValidFiles(e.dataTransfer.files);
-       }
- 
        node.onDragOver = isDraggingFiles;
  
        // const origOnDragDrop = node.onDragDrop;
