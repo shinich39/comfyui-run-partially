@@ -1,0 +1,25 @@
+{
+  "name": "comfyui-run-partially",
+  "version": "1.0.0",
+  "description": "run a workflow partially.",
+  "type": "module",
+  "scripts": {
+    "pub": "node scripts/pub.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shinich39/comfyui-run-partially.git"
+  },
+  "keywords": [
+    "comfyui"
+  ],
+  "author": "shinich39 <shinich39@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/shinich39/comfyui-run-partially/issues"
+  },
+  "homepage": "https://github.com/shinich39/comfyui-run-partially#readme",
+  "dependencies": {
+    "dotenv": "^16.5.0"
+  }
+}
