@@ -17,34 +17,23 @@ const Settings = {
   "Debug": false,
 }
 
-function getSkippedNodes(workflow) {
-  const skippedNodeSet = new WeakSet();
-  const skippedNodes = [];
-  const executedIds = [];
+function getSkipNodes(workflow) {
+  return workflow.nodes.filter((n) => n.type === CLASS_NAME && n.mode !== 4);
+}
 
-  for (const node of workflow.nodes) {
+function getNextNodes(workflow, targetNode) {
+  const accSet = new WeakSet();
+  const accNodes = [targetNode];
+  const computedIds = [];
+  
+  while(accNodes.length !== computedIds.length) {
+    for (const node of accNodes) {
 
-    if (node.type !== CLASS_NAME) {
-      continue;
-    }
-
-    // bypassed
-    if (node.mode === 4) {
-      continue;
-    }
-
-    skippedNodes.push(node);
-  }
-
-  while(skippedNodes.length !== executedIds.length) {
-
-    for (const node of skippedNodes) {
-
-      if (executedIds.indexOf(node.id) > -1) {
+      if (computedIds.indexOf(node.id) > -1) {
         continue;
       }
 
-      executedIds.push(node.id);
+      computedIds.push(node.id);
 
       for (const output of (node.outputs || [])) {
         
@@ -53,18 +42,28 @@ function getSkippedNodes(workflow) {
         const outputNodes = workflow.nodes.filter((n) => outputNodeIds.indexOf(n.id) > -1);
 
         for (const outputNode of outputNodes) {
-          if (!skippedNodeSet.has(outputNode)) {
-            skippedNodeSet.add(outputNode);
-            skippedNodes.push(outputNode);
+          if (!accSet.has(outputNode)) {
+            accSet.add(outputNode);
+            accNodes.push(outputNode);
           }
         }
-
       }
-
     }
   }
 
-  return skippedNodes;
+  return accNodes.slice(1);
+}
+
+function getSkippedNodes(workflow) {
+  const skipNodes = getSkipNodes(workflow);
+
+  const nodes = [];
+
+  for (const skipNode of skipNodes) {
+    nodes.push(...getNextNodes(workflow, skipNode));
+  }
+
+  return [...new Set(nodes)];
 }
 
 function getBatchCount() {
@@ -212,33 +211,67 @@ app.registerExtension({
   
         const { output, workflow } = args[1];
 
-        if (workflow.skipped_prompt) {
-          Object.assign(output, workflow.skipped_prompt);
-          return await origQueuePrompt.apply(this, arguments);
+        const skipNodes = getSkipNodes(workflow);
+
+        // initialize
+        if (!workflow.skipped_prompt) {
+
+          if (skipNodes.length === 0) {
+            return await origQueuePrompt.apply(this, arguments);
+          }
+
+          workflow.skipped_prompt = {};
+
+          // set skip
+          for (const obj of Object.values(output)) {
+            obj.skip = 0;
+          }
+
+          // increase skip value
+          for (const skipNode of skipNodes) {
+            const nextNodes = getNextNodes(workflow, skipNode);
+
+            for (const nextNode of nextNodes) {
+              const obj = output["" + nextNode.id];
+              if (obj) {
+                obj.skip++;
+              }
+            }
+          }
+
+          // extract skipped prompt
+          for (const id of Object.keys(output)) {
+            const obj = output[id];
+            if (obj.skip > 0) {
+              workflow.skipped_prompt[id] = output[id];
+              delete output[id];
+            } else {
+              delete obj.skip;
+            }
+          }
         }
 
-        workflow.skipped_prompt = {};
-
-        let skippedNodes = getSkippedNodes(workflow);
-
-        for (const node of skippedNodes) {
-          const id = "" + node.id;
-
-          if (output[id]) {
-            workflow.skipped_prompt[id] = output[id];
-
-            delete output[id];
+        // if skip is 0,
+        // move to output from skipped prompt
+        for (const id of Object.keys(workflow.skipped_prompt)) {
+          const obj = workflow.skipped_prompt[id];
+          if (obj.skip < 1) {
+            delete obj.skip;
+            output[id] = obj;
+            delete workflow.skipped_prompt[id];
+          } else {
+            // decrease skip value for next generation
+            obj.skip--;
           }
         }
 
         if (Settings["Debug"]) {
-          console.log("[comfyui-run-partially]\n", skippedNodes);
+          console.log("[comfyui-run-partially]\noutput", output);
+          console.log("[comfyui-run-partially]\nworkflow.skipped_prompt", workflow.skipped_prompt);
         }
 
-        // remove skip node
+        // remove skip nodes
         if (Settings["RemoveAfterGeneration"]) {
-
-          const skipNodes = skippedNodes.filter((n) => n.type === CLASS_NAME);
 
           for (const skipNode of skipNodes) {
 
@@ -278,19 +311,16 @@ app.registerExtension({
               targetLink[1] = originNodeId;
               targetLink[2] = outputSlot;
 
-
               // set link to originNode.inputs[0].links
               output.links.push(targetLink[0]);
             }
 
-   
             // remove origin link
             workflow.links.splice(originLinkIndex, 1);
           }
 
           // remove skipNode
           workflow.nodes = workflow.nodes.filter((n) => n.type !== CLASS_NAME);
-          skippedNodes = skippedNodes.filter((n) => n.type !== CLASS_NAME);
         }
 
         if (Settings["Debug"]) {
@@ -315,7 +345,7 @@ app.registerExtension({
       b.computeSize = () => [0, 26];
       b.callback = async () => {
         const p = await app.graphToPrompt();
-        const skippedNodes = getSkippedNodes(p.workflow);
+        const skippedNodes = getNextNodes(p.workflow, node);
 
         if (Settings["Debug"]) {
           console.log("[comfyui-run-partially]\n", skippedNodes);
