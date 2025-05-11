@@ -4,7 +4,8 @@
   "description": "run a workflow partially.",
   "type": "module",
   "scripts": {
-    "pub": "node scripts/pub.js"
+    "commit": "node scripts/commit.js",
+    "pub": "node scripts/publish.js"
   },
   "repository": {
     "type": "git",
