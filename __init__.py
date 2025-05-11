@@ -3,7 +3,7 @@
 @title: comfyui-run-partially
 @nickname: comfyui-run-partially
 @version: 1.0.0
-@description: run a workflow partially.
+@description: Run a workflow partially.
 """
 
 from .nodes import *

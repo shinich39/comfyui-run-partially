@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-run-partially"
-description = "run a workflow partially."
+description = "Run a workflow partially."
 version = "1.0.0"
 license = { file = "LICENSE" }
 

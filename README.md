@@ -1,6 +1,6 @@
 # comfyui-run-partially
 
-run a workflow partially.
+Run a workflow partially.
 
 ## Usage  
 

@@ -1,7 +1,7 @@
 {
   "name": "comfyui-run-partially",
   "version": "1.0.0",
-  "description": "run a workflow partially.",
+  "description": "Run a workflow partially.",
   "type": "module",
   "scripts": {
     "commit": "node scripts/commit.js",
