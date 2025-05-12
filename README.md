@@ -4,10 +4,10 @@ Run a workflow partially.
 
 ## Usage  
 
-- Add node > utils > Skip
+- Add node > utils > Break
 
-Drag and drop images on Skip node to run full workflow directly.  
-Workflows will added on queue with skipped nodes.  
+Drag and drop images on Break node to run full-workflow directly.  
+Workflows will added on queue with broken nodes.  
 
 ## Acknowledgements
 

@@ -10,20 +10,21 @@ import {
   getWebpMetadata,
 } from '../../scripts/pnginfo.js';
 
-const CLASS_NAME = "Skippp";
+const CLASS_NAME = "Breakkk";
+const PROP_NAME = "broken_prompt";
 
 const Settings = {
-  "RemoveAfterGeneration": true,
+  "RemoveBreakAfterGeneration": true,
   "Debug": false,
 }
 
-function getSkipNodes(workflow) {
+function getBreakNodes(workflow) {
   return workflow.nodes.filter((n) => n.type === CLASS_NAME && n.mode !== 4);
 }
 
-function getNextNodes(workflow, targetNode) {
+function getNextNodes(workflow, breakNode) {
   const accSet = new WeakSet();
-  const accNodes = [targetNode];
+  const accNodes = [breakNode];
   const computedIds = [];
   
   while(accNodes.length !== computedIds.length) {
@@ -54,13 +55,13 @@ function getNextNodes(workflow, targetNode) {
   return accNodes.slice(1);
 }
 
-function getSkippedNodes(workflow) {
-  const skipNodes = getSkipNodes(workflow);
+function getAllBrokenNodes(workflow) {
+  const breakNodes = getBreakNodes(workflow);
 
   const nodes = [];
 
-  for (const skipNode of skipNodes) {
-    nodes.push(...getNextNodes(workflow, skipNode));
+  for (const node of breakNodes) {
+    nodes.push(...getNextNodes(workflow, node));
   }
 
   return [...new Set(nodes)];
@@ -76,16 +77,7 @@ function getBatchCount() {
  * Loads workflow data from the specified file
  * @param {File} file
  */
-async function handleFile(file ) {
-  // const removeExt = (f) => {
-  //   if (!f) return f
-  //   const p = f.lastIndexOf('.')
-  //   if (p === -1) return f
-  //   return f.substring(0, p)
-  // }
-
-  // const fileName = removeExt(file.name)
-
+async function handleFile(file) {
   let prompt, workflow;
 
   if (file.type === 'image/png') {
@@ -148,8 +140,8 @@ async function handleFile(file ) {
   }
 
   if (Settings["Debug"]) {
-    console.log("[comfyui-run-partially]\nWorkflow", workflow);
-    console.log("[comfyui-run-partially]\nPrompt", prompt);
+    console.log("[comfyui-run-partially]\nhandleFile() Workflow", workflow);
+    console.log("[comfyui-run-partially]\nhandleFile() Prompt", prompt);
   }
 
   if (workflow && prompt) {
@@ -192,14 +184,14 @@ app.registerExtension({
       }
     },
     {
-      id: 'shinich39.RunPartially.RemoveAfterGeneration',
-      category: ['RunPartially', 'Pray for modularism', 'RemoveAfterGeneration'],
-      name: 'Remove After Generation',
-      tooltip: 'Remove \"Skip\" node in generated workflow after run.',
+      id: 'shinich39.RunPartially.RemoveBreakAfterGeneration',
+      category: ['RunPartially', 'Pray for modularism', 'RemoveBreakAfterGeneration'],
+      name: 'Remove Break After Generation',
+      tooltip: 'Remove \"Break\" node in generated workflow after run.',
       type: 'boolean',
       defaultValue: true,
       onChange: (value) => {
-        Settings["RemoveAfterGeneration"] = value;
+        Settings["RemoveBreakAfterGeneration"] = value;
       }
     },
   ],
@@ -211,69 +203,64 @@ app.registerExtension({
   
         const { output, workflow } = args[1];
 
-        const skipNodes = getSkipNodes(workflow);
+        const breakNodes = getBreakNodes(workflow);
 
         // initialize
-        if (!workflow.skipped_prompt) {
+        if (!workflow[PROP_NAME]) {
 
-          if (skipNodes.length === 0) {
+          if (breakNodes.length === 0) {
             return await origQueuePrompt.apply(this, arguments);
           }
 
-          workflow.skipped_prompt = {};
+          workflow[PROP_NAME] = {};
 
-          // set skip
+          // init break values to 0
           for (const obj of Object.values(output)) {
-            obj.skip = 0;
+            obj.break = 0;
           }
 
-          // increase skip value
-          for (const skipNode of skipNodes) {
-            const nextNodes = getNextNodes(workflow, skipNode);
+          // increase break values
+          for (const breakNode of breakNodes) {
+            const nextNodes = getNextNodes(workflow, breakNode);
 
             for (const nextNode of nextNodes) {
               const obj = output["" + nextNode.id];
               if (obj) {
-                obj.skip++;
+                obj.break++;
               }
             }
           }
 
-          // extract skipped prompt
+          // extract broken prompts
           for (const id of Object.keys(output)) {
             const obj = output[id];
-            if (obj.skip > 0) {
-              workflow.skipped_prompt[id] = output[id];
+            if (obj.break > 0) {
+              workflow[PROP_NAME][id] = output[id];
               delete output[id];
             } else {
-              delete obj.skip;
+              delete obj.break;
             }
           }
         }
 
-        // if skip is 0,
-        // move to output from skipped prompt
-        for (const id of Object.keys(workflow.skipped_prompt)) {
-          const obj = workflow.skipped_prompt[id];
-          if (obj.skip < 1) {
-            delete obj.skip;
+        // if break value is 0,
+        // move to output from broken object
+        for (const id of Object.keys(workflow[PROP_NAME])) {
+          const obj = workflow[PROP_NAME][id];
+          if (obj.break < 1) {
+            delete obj.break;
             output[id] = obj;
-            delete workflow.skipped_prompt[id];
+            delete workflow[PROP_NAME][id];
           } else {
-            // decrease skip value for next generation
-            obj.skip--;
+            // decrease break value for next generation
+            obj.break--;
           }
         }
 
-        if (Settings["Debug"]) {
-          console.log("[comfyui-run-partially]\noutput", output);
-          console.log("[comfyui-run-partially]\nworkflow.skipped_prompt", workflow.skipped_prompt);
-        }
+        // remove break nodes
+        if (Settings["RemoveBreakAfterGeneration"]) {
 
-        // remove skip nodes
-        if (Settings["RemoveAfterGeneration"]) {
-
-          for (const skipNode of skipNodes) {
+          for (const breakNode of breakNodes) {
 
             let originNode;
             let originLink;
@@ -288,11 +275,11 @@ app.registerExtension({
               const originId = link[1];
               const targetId = link[3];
   
-              if (originId == skipNode.id) {
+              if (originId == breakNode.id) {
                 targetNodes.push(workflow.nodes.find((n) => n.id == targetId));
                 targetLinks.push(link);
                 targetLinkIndexes.push(i);
-              } else if (targetId == skipNode.id) {
+              } else if (targetId == breakNode.id) {
                 originNode = workflow.nodes.find((n) => n.id == originId);
                 originLink = link;
                 originLinkIndex = i;
@@ -319,13 +306,13 @@ app.registerExtension({
             workflow.links.splice(originLinkIndex, 1);
           }
 
-          // remove skipNode
+          // remove break node
           workflow.nodes = workflow.nodes.filter((n) => n.type !== CLASS_NAME);
         }
 
         if (Settings["Debug"]) {
-          console.log("[comfyui-run-partially] Workflow\n", workflow);
-          console.log("[comfyui-run-partially] Prompt\n", output);
+          console.log("[comfyui-run-partially] Output\n", output);
+          console.log(`[comfyui-run-partially] Workflow.${PROP_NAME}\n`, workflow);
         }
 
         return await origQueuePrompt.apply(this, arguments);
@@ -341,17 +328,17 @@ app.registerExtension({
 
       // button
 
-      const b = node.addWidget("button", "Test", null, () => {}, { serialize: false, });
+      const b = node.addWidget("button", "Drop broken images here to continue", null, () => {}, { serialize: false, });
       b.computeSize = () => [0, 26];
       b.callback = async () => {
         const p = await app.graphToPrompt();
-        const skippedNodes = getNextNodes(p.workflow, node);
+        const brokenNodes = getNextNodes(p.workflow, node);
 
         if (Settings["Debug"]) {
-          console.log("[comfyui-run-partially]\n", skippedNodes);
+          console.log("[comfyui-run-partially]\n", brokenNodes);
         }
 
-        const nodes = app.graph.nodes.filter((n) => !!skippedNodes.find((nn) => n.id === nn.id));
+        const nodes = app.graph.nodes.filter((n) => !!brokenNodes.find((nn) => n.id === nn.id));
         app.canvas.deselectAll();
         app.canvas.selectNodes(nodes);
       };

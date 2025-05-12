@@ -9,11 +9,11 @@
 from .nodes import *
 
 NODE_CLASS_MAPPINGS = {
-  "Skippp": Skippp,
+  "Breakkk": Breakkk,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-  "Skippp": "Skip",
+  "Breakkk": "Break",
 }
 
 WEB_DIRECTORY = "./js"

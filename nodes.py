@@ -5,7 +5,7 @@ class AnyType(str):
 
 ANY_TYPE = AnyType("*")
 
-class Skippp():
+class Breakkk():
   def __init__(self):
     pass
 
