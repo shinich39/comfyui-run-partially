@@ -2,7 +2,7 @@
 @author: shinich39
 @title: comfyui-run-partially
 @nickname: comfyui-run-partially
-@version: 1.0.0
+@version: 1.0.1
 @description: Run a workflow partially.
 """
 
