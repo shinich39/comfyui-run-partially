@@ -140,8 +140,8 @@ async function handleFile(file) {
   }
 
   if (Settings["Debug"]) {
-    console.log("[comfyui-run-partially]\nhandleFile() Workflow", workflow);
-    console.log("[comfyui-run-partially]\nhandleFile() Prompt", prompt);
+    console.log("[comfyui-run-partially] handleFile() Workflow\n", workflow);
+    console.log("[comfyui-run-partially] handleFile() Prompt\n", prompt);
   }
 
   if (workflow && prompt) {
@@ -157,10 +157,9 @@ async function handleFile(file) {
         // push: 0, unshift: -1
         const res = await api.queuePrompt(0, p);
 
-        if (Settings["Debug"]) {
-          console.log("[comfyui-run-partially]\n", res);
-        }
-
+        // if (Settings["Debug"]) {
+        //   console.log("[comfyui-run-partially]\n", res);
+        // }
       } catch (err) {
         console.error(err);
       }
@@ -243,6 +242,10 @@ app.registerExtension({
           }
         }
 
+        if (Settings["Debug"]) {
+          console.log(`[comfyui-run-partially] api.queuePrompt() workflow.${PROP_NAME}`, workflow[PROP_NAME]);
+        }
+
         // if break value is 0,
         // move to output from broken object
         for (const id of Object.keys(workflow[PROP_NAME])) {
@@ -311,8 +314,8 @@ app.registerExtension({
         }
 
         if (Settings["Debug"]) {
-          console.log("[comfyui-run-partially] Output\n", output);
-          console.log(`[comfyui-run-partially] Workflow.${PROP_NAME}\n`, workflow);
+          console.log("[comfyui-run-partially] api.queuePrompt() Output\n", output);
+          console.log(`[comfyui-run-partially] api.queuePrompt() Workflow\n`, workflow);
         }
 
         return await origQueuePrompt.apply(this, arguments);
